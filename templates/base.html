@@ -18,6 +18,56 @@
     </style>
     <a href="http://localhost:8080/products/add">Create product</a>
     <br>
+
+    <form id="form">
+        <input type="text" name="searchName" value="John">
+        <input value="find" type="submit">
+    </form>
+    <div id="mess"></div>
+
+    <script>
+
+        // асинхронная функция
+        async function SendForm(e) {
+            // останавливает действие по умолчанию
+            e.preventDefault();
+
+            const formData = new FormData(document.querySelector('form'))
+            var data = {}
+            for (var pair of formData.entries()) {
+                data[pair[0]] = pair[1]
+            }
+            console.log(JSON.stringify(data));
+            // отправляем POST запрос на сервер
+            let response = await fetch('http://localhost:8080/q/product-search-by-name', {
+                method: 'POST',          // метод POST
+                body: JSON.stringify(data) // в класс FormData передаем ссылку на форму
+            });
+
+            // получаем JSON
+            let result = await response.json();
+            console.log(result.product);
+            if (result.product.id != 0) {
+                document.getElementById("mess").innerHTML = `<table>
+            <tr>
+            <th>`+ result.product.name + `</th>
+            <th>`+ result.product.price + `</th>
+            <th><a href="http://localhost:8080/product/edit/`+ result.product.id + `">edit</a></th>
+            <th><button id="`+ result.product.id + `" onclick="onClick(this.id)">Delete</button></th>
+            </tr>
+            </table>`
+            } else {
+                document.getElementById("mess").innerHTML = "<p>Not found</p>"
+            }
+
+        };
+
+        // при щелчке на кнопку отправки формы
+        // отправляем форму на сервер
+        form.onsubmit = SendForm;
+
+    </script>
+    <h1>Products</h1>
     <table>
         {{ range . }}
         <tr>
@@ -34,7 +84,7 @@
         // асинхронная функция
         async function onClick(btn) {
             // останавливает действие по умолчанию
-            var data = {id:btn}
+            var data = { id: btn }
             console.log(JSON.stringify(data));
             // отправляем POST запрос на сервер
             let response = await fetch('http://localhost:8080/cmd/delete-product', {
@@ -44,9 +94,9 @@
 
             // получаем JSON
             let result = await response.json();
-        
+
             location.reload()
-            
+
         };
 
         // при щелчке на кнопку отправки формы

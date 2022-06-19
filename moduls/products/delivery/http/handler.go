@@ -1,6 +1,7 @@
 package http
 
 import (
+	"errors"
 	"html/template"
 	"log"
 	"net/http"
@@ -135,10 +136,18 @@ func (h *Handler) Post(c *gin.Context) {
 		Price: pr,
 	})
 	if err != nil {
-		c.JSON(http.StatusBadRequest, &allErr{
-			Status: "failure",
-			Error:  err.Error(),
-		})
+		if errors.Is(err, products.ErrInvalidName) || errors.Is(err, products.ErrInvalidPrice) {
+			c.JSON(http.StatusBadRequest, &allErr{
+				Status: "failure",
+				Error:  err.Error(),
+			})
+		} else {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, &allErr{
+				Status: "failure",
+				Error:  "Internal server error",
+			})
+		}
 		return
 	}
 	c.JSON(http.StatusOK, &createSuccess{
@@ -167,6 +176,7 @@ func (h *Handler) Update(c *gin.Context) {
 		})
 		return
 	}
+	log.Println(inp)
 	id, err := strconv.Atoi(inp.Id)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, &allErr{
@@ -190,10 +200,18 @@ func (h *Handler) Update(c *gin.Context) {
 		Price: pr,
 	})
 	if err != nil {
-		c.JSON(http.StatusBadRequest, &allErr{
-			Status: "failure",
-			Error:  err.Error(),
-		})
+		if errors.Is(err, products.ErrInvalidName) || errors.Is(err, products.ErrInvalidPrice) {
+			c.JSON(http.StatusBadRequest, &allErr{
+				Status: "failure",
+				Error:  err.Error(),
+			})
+		} else {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, &allErr{
+				Status: "failure",
+				Error:  "Internal server error",
+			})
+		}
 		return
 	}
 	c.JSON(http.StatusOK, &updateDeleteSuccess{
@@ -223,8 +241,8 @@ func (h *Handler) Delete(c *gin.Context) {
 	}
 	err = h.usecase.Delete(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, &allErr{
-			Status: "failure",
+		c.JSON(http.StatusInternalServerError, &allErr{
+			Status: "Internal server error",
 			Error:  err.Error(),
 		})
 		return

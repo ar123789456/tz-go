@@ -128,10 +128,10 @@ func (r *Repository) Update(c context.Context, p models.Product) error {
 		if !bytes.Equal(buf, itob(p.Id)) {
 			return errors.New("invalid id")
 		}
-		// err = b.Delete(itob(p.Id))
-		// if err != nil {
-		// 	return err
-		// }
+		err = b.Delete(itob(p.Id))
+		if err != nil {
+			return err
+		}
 		err = b2.Delete([]byte(prod.Name))
 		if err != nil {
 			return err
@@ -155,6 +155,7 @@ func (r *Repository) Find(c context.Context, name string) (models.Product, error
 	err := r.db.View(func(t *bolt.Tx) error {
 		b := t.Bucket([]byte("name"))
 		id := b.Get([]byte(name))
+		log.Println(id)
 
 		b2 := t.Bucket([]byte("products"))
 		buf := b2.Get(id)

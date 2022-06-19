@@ -14,6 +14,7 @@
         <input type="hidden" name="id" value="{{ .Id }}">
         <input type="text" name="name" value="{{ .Name }}"><br>
         <input type="number" name="price" value="{{ .Price }}"><br>
+        <a href="http://localhost:8080/products">prev</a>
         <input type="submit">
     </form>
     <div id="mess">
@@ -42,9 +43,9 @@
             let result = await response.json();
 
             document.getElementById("mess").append(result.error)
-            // if (result.status == "success") {
-            //     location.replace("http://localhost:8080/products")
-            // }
+            if (result.status == "success") {
+                location.replace("http://localhost:8080/products")
+            }
         };
 
         // при щелчке на кнопку отправки формы
