@@ -2,8 +2,9 @@ package http
 
 import (
 	"html/template"
+	"log"
 	"net/http"
-
+	"strconv"
 	"tz/models"
 	"tz/moduls/products"
 
@@ -26,7 +27,7 @@ type allErr struct {
 }
 
 func (h *Handler) Base(c *gin.Context) {
-	temp, err := template.ParseFiles("base.html")
+	temp, err := template.ParseFiles("templates/base.html")
 	if err != nil {
 		c.AbortWithError(http.StatusInternalServerError, products.ErrTempNotFound)
 		return
@@ -42,7 +43,7 @@ func (h *Handler) Base(c *gin.Context) {
 }
 
 func (h *Handler) Add(c *gin.Context) {
-	temp, err := template.ParseFiles("add.html")
+	temp, err := template.ParseFiles("templates/add.html")
 	if err != nil {
 		c.AbortWithError(http.StatusInternalServerError, products.ErrTempNotFound)
 		return
@@ -53,12 +54,23 @@ func (h *Handler) Add(c *gin.Context) {
 }
 
 func (h *Handler) Edit(c *gin.Context) {
-	temp, err := template.ParseFiles("edit.html")
+	temp, err := template.ParseFiles("templates/edit.html")
 	if err != nil {
 		c.AbortWithError(http.StatusInternalServerError, products.ErrTempNotFound)
 		return
 	}
-	if temp.Execute(c.Writer, nil) != nil {
+	id := c.Param("id")
+	intid, err := strconv.Atoi(id)
+	if err != nil {
+		c.AbortWithStatus(http.StatusNotFound)
+		return
+	}
+	p, err := h.usecase.Get(c.Request.Context(), intid)
+	if err != nil {
+		c.AbortWithStatus(http.StatusInternalServerError)
+		return
+	}
+	if temp.Execute(c.Writer, p) != nil {
 		c.AbortWithStatus(http.StatusInternalServerError)
 	}
 }
@@ -92,7 +104,7 @@ func (h *Handler) Find(c *gin.Context) {
 
 type inputCreate struct {
 	Name  string `json:"name"`
-	Price int    `json:"price"`
+	Price string `json:"price"`
 }
 
 type createSuccess struct {
@@ -103,15 +115,24 @@ type createSuccess struct {
 func (h *Handler) Post(c *gin.Context) {
 	inp := new(inputCreate)
 	if err := c.BindJSON(inp); err != nil {
+		log.Println(err)
 		c.JSON(http.StatusBadRequest, &allErr{
 			Status: "failure",
 			Error:  "bad request",
 		})
 		return
 	}
+	pr, err := strconv.Atoi(inp.Price)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, &allErr{
+			Status: "failure",
+			Error:  "invalid price",
+		})
+		return
+	}
 	id, err := h.usecase.Post(c.Request.Context(), models.Product{
 		Name:  inp.Name,
-		Price: inp.Price,
+		Price: pr,
 	})
 	if err != nil {
 		c.JSON(http.StatusBadRequest, &allErr{
@@ -120,16 +141,16 @@ func (h *Handler) Post(c *gin.Context) {
 		})
 		return
 	}
-	c.JSON(http.StatusBadRequest, &createSuccess{
+	c.JSON(http.StatusOK, &createSuccess{
 		Status: "success",
 		Id:     id,
 	})
 }
 
 type inputUpdate struct {
-	Id    int    `json:"id"`
+	Id    string `json:"id"`
 	Name  string `json:"name"`
-	Price int    `json:"price"`
+	Price string `json:"price"`
 }
 
 type updateDeleteSuccess struct {
@@ -139,15 +160,34 @@ type updateDeleteSuccess struct {
 func (h *Handler) Update(c *gin.Context) {
 	inp := new(inputUpdate)
 	if err := c.BindJSON(inp); err != nil {
+		log.Println(err)
 		c.JSON(http.StatusBadRequest, &allErr{
 			Status: "failure",
 			Error:  "bad request",
 		})
 		return
 	}
-	err := h.usecase.Update(c.Request.Context(), models.Product{
+	id, err := strconv.Atoi(inp.Id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, &allErr{
+			Status: "failure",
+			Error:  "bad request",
+		})
+		return
+	}
+	pr, err := strconv.Atoi(inp.Price)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, &allErr{
+			Status: "failure",
+			Error:  "bad request",
+		})
+		return
+	}
+
+	err = h.usecase.Update(c.Request.Context(), models.Product{
+		Id:    id,
 		Name:  inp.Name,
-		Price: inp.Price,
+		Price: pr,
 	})
 	if err != nil {
 		c.JSON(http.StatusBadRequest, &allErr{
@@ -156,13 +196,13 @@ func (h *Handler) Update(c *gin.Context) {
 		})
 		return
 	}
-	c.JSON(http.StatusBadRequest, &updateDeleteSuccess{
+	c.JSON(http.StatusOK, &updateDeleteSuccess{
 		Status: "success",
 	})
 }
 
 type inputDelete struct {
-	Id int `json:"id"`
+	Id string `json:"id"`
 }
 
 func (h *Handler) Delete(c *gin.Context) {
@@ -174,7 +214,14 @@ func (h *Handler) Delete(c *gin.Context) {
 		})
 		return
 	}
-	err := h.usecase.Delete(c.Request.Context(), inp.Id)
+	id, err := strconv.Atoi(inp.Id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, &allErr{
+			Status: "failure",
+			Error:  "id is not a number",
+		})
+	}
+	err = h.usecase.Delete(c.Request.Context(), id)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, &allErr{
 			Status: "failure",
@@ -182,7 +229,7 @@ func (h *Handler) Delete(c *gin.Context) {
 		})
 		return
 	}
-	c.JSON(http.StatusBadRequest, &updateDeleteSuccess{
+	c.JSON(http.StatusOK, &updateDeleteSuccess{
 		Status: "success",
 	})
 }

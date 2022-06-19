@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/gob"
+	"errors"
 	"log"
 	"tz/models"
 	"tz/moduls/products"
@@ -26,6 +27,7 @@ func (r *Repository) GetAll(c context.Context) ([]models.Product, error) {
 	var posts []models.Product
 	err := r.db.View(func(t *bolt.Tx) error {
 		b := t.Bucket([]byte("products"))
+
 		err := b.ForEach(func(k, v []byte) error {
 			buff := bytes.NewBuffer(v)
 			p, err := decode(*buff)
@@ -43,6 +45,19 @@ func (r *Repository) GetAll(c context.Context) ([]models.Product, error) {
 		return err
 	})
 	return posts, err
+}
+
+func (r *Repository) Get(c context.Context, id int) (models.Product, error) {
+	var prod models.Product
+	err := r.db.View(func(t *bolt.Tx) error {
+		b2 := t.Bucket([]byte("products"))
+		buf := b2.Get(itob(id))
+
+		var err error
+		prod, err = decode(*bytes.NewBuffer(buf))
+		return err
+	})
+	return prod, err
 }
 
 func (r *Repository) Post(c context.Context, p models.Product) (int, error) {
@@ -102,15 +117,36 @@ func (r *Repository) Delete(c context.Context, i int) error {
 func (r *Repository) Update(c context.Context, p models.Product) error {
 	return r.db.Update(func(t *bolt.Tx) error {
 		b := t.Bucket([]byte("products"))
+		b2 := t.Bucket([]byte("name"))
+
 		buf := b.Get(itob(p.Id))
 		prod, err := decode(*bytes.NewBuffer(buf))
 		if err != nil {
 			return err
 		}
-		if p.Name != prod.Name {
-			return products.ErrInvalidName
+		buf = b2.Get([]byte(prod.Name))
+		if !bytes.Equal(buf, itob(p.Id)) {
+			return errors.New("invalid id")
 		}
-		return nil
+		// err = b.Delete(itob(p.Id))
+		// if err != nil {
+		// 	return err
+		// }
+		err = b2.Delete([]byte(prod.Name))
+		if err != nil {
+			return err
+		}
+
+		buff, err := encode(p)
+		if err != nil {
+			return err
+		}
+		err = b.Put(itob(p.Id), buff.Bytes())
+		if err != nil {
+			return err
+		}
+		err = b2.Put([]byte(p.Name), itob(p.Id))
+		return err
 	})
 }
 

@@ -9,50 +9,49 @@
 </head>
 
 <body>
-    <style>
-        table,
-        th,
-        td {
-            border: 1px solid black;
-        }
-    </style>
-    <a href="http://localhost:8080/products/add">Create product</a>
-    <br>
-    <table>
-        {{ range . }}
-        <tr>
-            <th>{{ .Name }}</th>
-            <th>{{ .Price }}</th>
-            <th><a href="http://localhost:8080/product/edit/{{ .Id }}">edit</a></th>
-            <th><button id="{{.Id}}" onclick="onClick(this.id)">Delete</button></th>
-        </tr>
-        {{ end }}
-    </table>
+    <h1>Edit</h1>
+    <form id="form">
+        <input type="hidden" name="id" value="{{ .Id }}">
+        <input type="text" name="name" value="{{ .Name }}"><br>
+        <input type="number" name="price" value="{{ .Price }}"><br>
+        <input type="submit">
+    </form>
+    <div id="mess">
+    </div>
 
     <script>
 
         // асинхронная функция
-        async function onClick(btn) {
+        async function SendForm(e) {
             // останавливает действие по умолчанию
-            var data = {id:btn}
+            e.preventDefault();
+
+            const formData = new FormData(document.querySelector('form'))
+            var data = {}
+            for (var pair of formData.entries()) {
+                data[pair[0]] = pair[1]
+            }
             console.log(JSON.stringify(data));
             // отправляем POST запрос на сервер
-            let response = await fetch('http://localhost:8080/cmd/delete-product', {
+            let response = await fetch('http://localhost:8080/cmd/edit-product', {
                 method: 'POST',          // метод POST
                 body: JSON.stringify(data) // в класс FormData передаем ссылку на форму
             });
 
             // получаем JSON
             let result = await response.json();
-        
-            location.reload()
-            
+
+            document.getElementById("mess").append(result.error)
+            // if (result.status == "success") {
+            //     location.replace("http://localhost:8080/products")
+            // }
         };
 
         // при щелчке на кнопку отправки формы
         // отправляем форму на сервер
-    </script>
+        form.onsubmit = SendForm;
 
+    </script>
 </body>
 
 </html>
