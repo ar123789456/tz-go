@@ -7,7 +7,8 @@ import (
 
 type Repository interface {
 	GetAll(context.Context) ([]models.Product, error)
-	Post(context.Context)
-	Update(context.Context)
-	Delete(context.Context)
+	Post(context.Context, models.Product) (int, error)
+	Delete(context.Context, int) error
+	Update(context.Context, models.Product) error
+	Find(context.Context, string) (models.Product, error)
 }
